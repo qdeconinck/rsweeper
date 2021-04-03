@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-//! A Sudoku game.
+//! A sweeper game made in Rust.
 
 use glutin_window::GlutinWindow;
 use graphics::clear;
@@ -8,7 +8,7 @@ use opengl_graphics::{Filter, GlGraphics, GlyphCache, OpenGL, TextureSettings};
 
 fn main() {
     let opengl = OpenGL::V3_2;
-    let settings = WindowSettings::new("Sudoku", [1024;2])
+    let settings = WindowSettings::new("RSweeper", [1024;2])
         .graphics_api(opengl)
         .exit_on_esc(true);
     let mut window: GlutinWindow = settings.build()
@@ -17,7 +17,8 @@ fn main() {
     let mut events = Events::new(EventSettings::new().lazy(true));
     let mut gl = GlGraphics::new(opengl);
 
-    let gameboard = Gameboard::new();
+    let gameboard_size = [20, 20];
+    let gameboard = Gameboard::new(gameboard_size, 50);
     let mut gameboard_controller = GameboardController::new(gameboard);
     let gameboard_view_settings = GameboardViewSettings::new();
     let gameboard_view = GameboardView::new(gameboard_view_settings);

@@ -9,7 +9,7 @@ pub struct GameboardViewSettings {
     /// Position from left-top corner.
     pub position: [f64; 2],
     /// Size of gameboard along horizontal and vertical edge.
-    pub size: f64,
+    pub size: [f64; 2],
     /// Background color.
     pub background_color: Color,
     /// Border color.
@@ -37,7 +37,7 @@ impl GameboardViewSettings {
     pub fn new() -> Self {
         Self {
             position: [10.0; 2],
-            size: 800.0,
+            size: [800.0, 800.0],
             background_color: [0.8, 0.8, 1.0, 1.0],
             border_color: [0.0, 0.0, 0.2, 1.0],
             board_edge_color: [0.0, 0.0, 0.2, 1.0],
@@ -80,36 +80,51 @@ impl GameboardView {
         let ref settings = self.settings;
         let board_rect = [
             settings.position[0], settings.position[1],
-            settings.size, settings.size,
+            settings.size[0], settings.size[1],
         ];
 
         // Draw board background.
         Rectangle::new(settings.background_color)
             .draw(board_rect, &c.draw_state, c.transform, g);
 
-        // Draw selected cell background.
-        if let Some(ind) = controller.selected_cell {
-            let cell_size = settings.size / 9.0;
-            let pos = [ind[0] as f64 * cell_size, ind[1] as f64 * cell_size];
-            let cell_rect = [
-                settings.position[0] + pos[0], settings.position[1] + pos[1],
-                cell_size, cell_size,
-            ];
-            Rectangle::new(settings.selected_cell_background_color)
-                .draw(cell_rect, &c.draw_state, c.transform, g);
-        }
-
-        // Draw characters.
+        // Declare the format for cell and section lines.
+        let cell_edge = Line::new(settings.cell_edge_color, settings.cell_edge_radius);
         let text_image = Image::new_color(settings.text_color);
-        let cell_size = settings.size / 9.0;
-        for j in 0..9 {
-            for i in 0..9 {
-                if let Some(ch) = controller.gameboard.char([i, j]) {
+
+        let x_size = settings.size[0] / (controller.gameboard.size[0] as f64);
+        let y_size = settings.size[1] / (controller.gameboard.size[1] as f64);
+        for cell_y in 0..controller.gameboard.size[1] {
+            for cell_x in 0..controller.gameboard.size[0] {
+                let (ch, color) = controller.gameboard
+                    .char_and_color([cell_x, cell_y]);
+
+                let x = settings.position[0] + (cell_x as f64) * x_size;
+                let y = settings.position[1] + (cell_y as f64) * y_size;
+                let x2 = x + x_size;
+                let y2 = y + y_size;
+
+                let vline = [x, y, x, y2];
+                let hline = [x, y, x2, y];
+
+                // Draw background
+                let cell_rect = [
+                    x, y,
+                    x_size, y_size,
+                ];
+                Rectangle::new(color)
+                    .draw(cell_rect, &c.draw_state, c.transform, g);
+
+                // Draw lines
+                cell_edge.draw(vline, &c.draw_state, c.transform, g);
+                cell_edge.draw(hline, &c.draw_state, c.transform, g);
+
+                // If there is a char, draw it.
+                if let Some(ch) = ch {
                     let pos = [
-                        settings.position[0] + i as f64 * cell_size + (cell_size / 3.0),
-                        settings.position[1] + j as f64 * cell_size + (cell_size / 10.0),
+                        x,
+                        y,
                     ];
-                    if let Ok(character) = glyphs.character(46, ch) {
+                    if let Ok(character) = glyphs.character(20, ch) {
                         let ch_x = pos[0] + character.left();
                         let ch_y = pos[1] + character.top();
                         let text_image = text_image.src_rect([
@@ -124,31 +139,6 @@ impl GameboardView {
                                         g);
                     }
                 }
-            }
-        }
-
-        // Declare the format for cell and section lines.
-        let cell_edge = Line::new(settings.cell_edge_color, settings.cell_edge_radius);
-        let section_edge = Line::new(settings.section_edge_color, settings.section_edge_radius);
-
-        for i in 0..9 {
-            let x = settings.position[0] + i as f64 / 9.0 * settings.size;
-            let y = settings.position[1] + i as f64 / 9.0 * settings.size;
-            let x2 = settings.position[0] + settings.size;
-            let y2 = settings.position[1] + settings.size;
-
-            let vline = [x, settings.position[1], x, y2];
-            let hline = [settings.position[0], y, x2, y];
-
-            // Draw section lines
-            if (i % 3) == 0 {
-                section_edge.draw(vline, &c.draw_state, c.transform, g);
-                section_edge.draw(hline, &c.draw_state, c.transform, g);
-            }
-            // Draw the regular cell lines 
-            else {
-                cell_edge.draw(vline, &c.draw_state, c.transform, g);
-                cell_edge.draw(hline, &c.draw_state, c.transform, g);
             }
         }
 

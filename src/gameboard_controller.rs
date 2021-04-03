@@ -1,14 +1,14 @@
 //! Gameboard controller.
 
-use piston::{Button, GenericEvent, Key, MouseButton};
+use piston::{Button, GenericEvent, MouseButton};
 
-use crate::Gameboard;
+use crate::{Gameboard, gameboard::PlayerCell};
 
 /// Handles events for Sudoku game.
 pub struct GameboardController {
     /// Stores the gameboard state.
     pub gameboard: Gameboard,
-    /// The selected cell, if any.
+    /// The last selected cell, if any.
     pub selected_cell: Option<[usize; 2]>,
     /// The last mouse cursor position.
     cursor_pos: [f64; 2],
@@ -24,40 +24,52 @@ impl GameboardController {
         }
     }
 
+    /// Set the selected cell, or None if it is out of the grid.
+    fn find_selected_cell(&mut self, pos: [f64; 2], size: [f64; 2]) {
+        // Find coordinates relative to upper left corner.
+        let x = self.cursor_pos[0] - pos[0];
+        let y = self.cursor_pos[1] - pos[1];
+        // Check that coordinates are inside board boundaries.
+        self.selected_cell = if x >= 0.0 && x < size[0] && y >= 0.0 && y < size[1] {
+            // Compute the cell position.
+            let cell_x = (x / size[0] * (self.gameboard.size[0] as f64)) as usize;
+            let cell_y = (y / size[1] * (self.gameboard.size[1] as f64)) as usize;
+            Some([cell_x, cell_y])
+        } else {
+            None
+        };
+    }
+
     /// Handles events.
-    pub fn event<E: GenericEvent>(&mut self, pos: [f64; 2], size: f64, e: &E) {
+    pub fn event<E: GenericEvent>(&mut self, pos: [f64; 2], size: [f64; 2], e: &E) {
         if let Some(pos) = e.mouse_cursor_args() {
             self.cursor_pos = pos;
         }
 
         if let Some(Button::Mouse(MouseButton::Left)) = e.press_args() {
-            // Find coordinates relative to upper left corner.
-            let x = self.cursor_pos[0] - pos[0];
-            let y = self.cursor_pos[1] - pos[1];
-            // Check that coordinates are inside board boundaries.
-            if x >= 0.0 && x < size && y >= 0.0 && y < size {
-                // Compute the cell position.
-                let cell_x = (x / size * 9.0) as usize;
-                let cell_y = (y / size * 9.0) as usize;
-                self.selected_cell = Some([cell_x, cell_y]);
+            self.find_selected_cell(pos, size);
+            match self.selected_cell {
+                Some(ind) => {
+                    self.gameboard.set(ind, PlayerCell::Revealed);
+                },
+                None => {},
             }
         }
 
-        if let Some(Button::Keyboard(key)) = e.press_args() {
-            if let Some(ind) = self.selected_cell {
-                // Set cell value.
-                match key {
-                    Key::D1 => self.gameboard.set(ind, 1),
-                    Key::D2 => self.gameboard.set(ind, 2),
-                    Key::D3 => self.gameboard.set(ind, 3),
-                    Key::D4 => self.gameboard.set(ind, 4),
-                    Key::D5 => self.gameboard.set(ind, 5),
-                    Key::D6 => self.gameboard.set(ind, 6),
-                    Key::D7 => self.gameboard.set(ind, 7),
-                    Key::D8 => self.gameboard.set(ind, 8),
-                    Key::D9 => self.gameboard.set(ind, 9),
-                    _ => {},
-                }
+        if let Some(Button::Mouse(MouseButton::Right)) = e.press_args() {
+            self.find_selected_cell(pos, size);
+            match self.selected_cell {
+                Some(ind) => {
+                    let cell = self.gameboard.get_cell(ind[0], ind[1]);
+                    let val = match cell.get_player_cell() {
+                        PlayerCell::NotDetermined => PlayerCell::Flagged,
+                        PlayerCell::Flagged => PlayerCell::Question,
+                        PlayerCell::Question => PlayerCell::NotDetermined,
+                        _ => return,
+                    };
+                    self.gameboard.set(ind, val);
+                },
+                None => {},
             }
         }
     }
