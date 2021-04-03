@@ -188,9 +188,50 @@ impl Gameboard {
                 }
             }
 
-            println!("TODO, player still alive");
+            // Did the player won?
+            // Actually, we can just look at player views, if we only have
+            // Revealed and exactly `bombs` Flagged, the player wins.
+            let mut flagged = 0;
+            for y in 0..self.size[1] {
+                for x in 0..self.size[0] {
+                    match self.get_cell(x, y).player {
+                        PlayerCell::Flagged => {
+                            flagged += 1;
+                            if flagged > self.bombs {
+                                // Too many flags, not won!
+                                return;
+                            }
+                        },
+                        PlayerCell::Revealed => {},
+                        // If some are not Revealed nor Flagged, then the game
+                        // is not over.
+                        _ => return,
+                    }
+                }
+            }
+
+            // If we arrive here, it means the player won!
+            self.state = GameState::Won;
+            println!("Hoora, you won!");
         }
 
+    }
+
+    fn reveal_with_no_neighbors(&mut self, x: usize, y: usize) {
+        for ny in y.saturating_sub(1)..=min(y + 1, self.size[1] - 1) {
+            for nx in x.saturating_sub(1)..=min(x + 1, self.size[0] - 1) {
+                // Only handle cells that are not revealed, otherwise we will
+                // loop forever.
+                if let PlayerCell::Revealed = self.get_cell(nx, ny).player {
+                    continue;
+                }
+                self.get_mut_cell(nx, ny).player = PlayerCell::Revealed;
+                match self.get_cell(nx, ny).content {
+                    CellContent::Nothing(0) => self.reveal_with_no_neighbors(nx, ny),
+                    _ => {},
+                }
+            }
+        }
     }
 
     /// Sets the player input.
@@ -205,6 +246,11 @@ impl Gameboard {
                     let cell = self.get_mut_cell(ind[0], ind[1]);
                     cell.player = PlayerCell::Revealed;
                     self.init();
+                    // Only perform the optimization if the player has some luck.
+                    match self.get_cell(ind[0], ind[1]).content {
+                        CellContent::Nothing(0) => self.reveal_with_no_neighbors(ind[0], ind[1]),
+                        _ => {},
+                    }
                 }
                 _ => {}
             }
@@ -221,6 +267,14 @@ impl Gameboard {
 
             // Ok, then something should probably be set.
             cell.player = val;
+
+            // Add the optimization to reduce the number of clicks.
+            if let PlayerCell::Revealed = val {
+                match cell.content {
+                    CellContent::Nothing(0) => self.reveal_with_no_neighbors(ind[0], ind[1]),
+                    _ => {},
+                }
+            }
 
             // Finally, check the game status looking at the last cell touched.
             self.update_state(ind);

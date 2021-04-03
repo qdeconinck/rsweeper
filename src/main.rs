@@ -17,8 +17,8 @@ fn main() {
     let mut events = Events::new(EventSettings::new().lazy(true));
     let mut gl = GlGraphics::new(opengl);
 
-    let gameboard_size = [20, 20];
-    let gameboard = Gameboard::new(gameboard_size, 50);
+    let gameboard_size = [10, 10];
+    let gameboard = Gameboard::new(gameboard_size, 10);
     let mut gameboard_controller = GameboardController::new(gameboard);
     let gameboard_view_settings = GameboardViewSettings::new();
     let gameboard_view = GameboardView::new(gameboard_view_settings);
