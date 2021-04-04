@@ -25,15 +25,18 @@ impl GameboardController {
     }
 
     /// Set the selected cell, or None if it is out of the grid.
-    fn find_selected_cell(&mut self, pos: [f64; 2], size: [f64; 2]) {
+    fn find_selected_cell(&mut self, pos: [f64; 2], cell_size: [f64; 2]) {
         // Find coordinates relative to upper left corner.
         let x = self.cursor_pos[0] - pos[0];
         let y = self.cursor_pos[1] - pos[1];
+
+        let size_x = cell_size[0] * (self.gameboard.size[0] as f64);
+        let size_y = cell_size[1] * (self.gameboard.size[1] as f64);
         // Check that coordinates are inside board boundaries.
-        self.selected_cell = if x >= 0.0 && x < size[0] && y >= 0.0 && y < size[1] {
+        self.selected_cell = if x >= 0.0 && x < size_x && y >= 0.0 && y < size_y {
             // Compute the cell position.
-            let cell_x = (x / size[0] * (self.gameboard.size[0] as f64)) as usize;
-            let cell_y = (y / size[1] * (self.gameboard.size[1] as f64)) as usize;
+            let cell_x = (x / cell_size[0]) as usize;
+            let cell_y = (y / cell_size[1]) as usize;
             Some([cell_x, cell_y])
         } else {
             None
@@ -41,13 +44,13 @@ impl GameboardController {
     }
 
     /// Handles events.
-    pub fn event<E: GenericEvent>(&mut self, pos: [f64; 2], size: [f64; 2], e: &E) {
+    pub fn event<E: GenericEvent>(&mut self, pos: [f64; 2], cell_size: [f64; 2], e: &E) {
         if let Some(pos) = e.mouse_cursor_args() {
             self.cursor_pos = pos;
         }
 
         if let Some(Button::Mouse(MouseButton::Left)) = e.press_args() {
-            self.find_selected_cell(pos, size);
+            self.find_selected_cell(pos, cell_size);
             match self.selected_cell {
                 Some(ind) => {
                     self.gameboard.set(ind, PlayerCell::Revealed);
@@ -57,7 +60,7 @@ impl GameboardController {
         }
 
         if let Some(Button::Mouse(MouseButton::Right)) = e.press_args() {
-            self.find_selected_cell(pos, size);
+            self.find_selected_cell(pos, cell_size);
             match self.selected_cell {
                 Some(ind) => {
                     let cell = self.gameboard.get_cell(ind[0], ind[1]);

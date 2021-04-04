@@ -24,12 +24,12 @@ fn main() {
     let gameboard_view = GameboardView::new(gameboard_view_settings);
 
     let texture_settings = TextureSettings::new().filter(Filter::Nearest);
-    let ref mut glyphs = GlyphCache::new("assets/FiraSans-Regular.ttf", (), texture_settings)
+    let ref mut glyphs = GlyphCache::new("assets/FiraSans-Bold.ttf", (), texture_settings)
         .expect("cannot load font");
 
     while let Some(e) = events.next(&mut window) {
         gameboard_controller.event(gameboard_view.settings.position,
-            gameboard_view.settings.size, &e);
+            gameboard_view.settings.cell_size, &e);
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, g| {
                 clear([1.0; 4], g);
