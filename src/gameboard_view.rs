@@ -1,13 +1,15 @@
 //! Gameboard view.
 
-use graphics::{CharacterCache, Context, Graphics, Image, Line, Rectangle, Transformed, types::Color};
+use graphics::{CharacterCache, Context, Graphics, Image, Line, Rectangle, Text, Transformed, types::Color};
 
 use crate::GameboardController;
 
 /// Stores gameboard view settings.
 pub struct GameboardViewSettings {
-    /// Position from left-top corner.
-    pub position: [f64; 2],
+    /// Position of the gameboard from left-top corner.
+    pub gameboard_position: [f64; 2],
+    /// Position of the left bombs counter from left-top corner.
+    pub bombs_left_position: [f64; 2],
     /// Size of gameboard along horizontal and vertical edge.
     // pub size: [f64; 2],
     /// Size of a single cell along horizontal and vertical edges.
@@ -36,9 +38,12 @@ pub struct GameboardViewSettings {
 
 impl GameboardViewSettings {
     /// Creates new gameboard view settings.
-    pub fn new() -> Self {
+    pub fn new(gameboard_size: [usize; 2]) -> Self {
+        let cell_size = [30.0; 2];
+        let bombs_left_x =  (gameboard_size[0] as f64 * cell_size[0]) - 150.0;
         Self {
-            position: [10.0; 2],
+            gameboard_position: [10.0, 100.0],
+            bombs_left_position: [bombs_left_x, 60.0],
             cell_size: [30.0, 30.0],
             background_color: [0.8, 0.8, 1.0, 1.0],
             border_color: [0.0, 0.0, 0.2, 1.0],
@@ -86,26 +91,35 @@ impl GameboardView {
             settings.cell_size[1] * (gameboard.size[1] as f64),
         ];
         let board_rect = [
-            settings.position[0], settings.position[1],
+            settings.gameboard_position[0], settings.gameboard_position[1],
             gameboard_size[0], gameboard_size[1],
         ];
 
+        let text = Text::new(30);
+        let bombs_counter_rect = [
+            settings.bombs_left_position[0], settings.bombs_left_position[1],
+            140.0, 140.0,
+        ];
+
+        // Draw bomb counters.
+        let str = format!("Left: {}", gameboard.bombs - gameboard.flagged);
+
+        let _ = text.draw(&str, glyphs, &c.draw_state, c.transform.trans(bombs_counter_rect[0], bombs_counter_rect[1]), g);
         // Draw board background.
         Rectangle::new(settings.background_color)
             .draw(board_rect, &c.draw_state, c.transform, g);
 
         // Declare the format for cell and section lines.
         let cell_edge = Line::new(settings.cell_edge_color, settings.cell_edge_radius);
-        let text_image = Image::new_color(settings.text_color);
 
         let x_size = gameboard_size[0] / (gameboard.size[0] as f64);
         let y_size = gameboard_size[1] / (gameboard.size[1] as f64);
         for cell_y in 0..gameboard.size[1] {
             for cell_x in 0..gameboard.size[0] {
-                let (ch, color) = gameboard.char_and_color([cell_x, cell_y]);
+                let (ch, bg_color) = gameboard.char_and_colors([cell_x, cell_y]);
 
-                let x = settings.position[0] + (cell_x as f64) * x_size;
-                let y = settings.position[1] + (cell_y as f64) * y_size;
+                let x = settings.gameboard_position[0] + (cell_x as f64) * x_size;
+                let y = settings.gameboard_position[1] + (cell_y as f64) * y_size;
                 let x2 = x + x_size;
                 let y2 = y + y_size;
 
@@ -117,7 +131,7 @@ impl GameboardView {
                     x, y,
                     x_size, y_size,
                 ];
-                Rectangle::new(color)
+                Rectangle::new(bg_color)
                     .draw(cell_rect, &c.draw_state, c.transform, g);
 
                 // Draw lines
@@ -125,7 +139,8 @@ impl GameboardView {
                 cell_edge.draw(hline, &c.draw_state, c.transform, g);
 
                 // If there is a char, draw it.
-                if let Some(ch) = ch {
+                if let Some((ch, ch_color)) = ch {
+                    let text_image = Image::new_color(ch_color);
                     let pos = [
                         x,
                         y,

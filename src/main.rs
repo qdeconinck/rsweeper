@@ -20,7 +20,7 @@ fn main() {
     let gameboard_size = [10, 10];
     let gameboard = Gameboard::new(gameboard_size, 10);
     let mut gameboard_controller = GameboardController::new(gameboard);
-    let gameboard_view_settings = GameboardViewSettings::new();
+    let gameboard_view_settings = GameboardViewSettings::new(gameboard_controller.gameboard.size);
     let gameboard_view = GameboardView::new(gameboard_view_settings);
 
     let texture_settings = TextureSettings::new().filter(Filter::Nearest);
@@ -28,7 +28,7 @@ fn main() {
         .expect("cannot load font");
 
     while let Some(e) = events.next(&mut window) {
-        gameboard_controller.event(gameboard_view.settings.position,
+        gameboard_controller.event(gameboard_view.settings.gameboard_position,
             gameboard_view.settings.cell_size, &e);
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, g| {

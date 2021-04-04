@@ -79,6 +79,8 @@ pub struct Gameboard {
     pub size: [usize; 2],
     /// The number of bombs in the game.
     pub bombs: usize,
+    /// The number of cells flagged by the player.
+    pub flagged: usize,
     /// Indicates the game state.
     pub state: GameState,
     /// The game cells.
@@ -88,6 +90,17 @@ pub struct Gameboard {
 const BOMB_BACKGROUND: Color = [0.9, 0.0, 0.0, 1.0];
 const ND_BACKGROUND: Color = [1.0, 1.0, 1.0, 1.0];
 const REV_BACKGROUND: Color = [0.7, 0.7, 0.7, 1.0];
+const FLAGGED_BACKGROUND: Color = [1.0, 0.64, 0.0, 1.0];
+const BLACK: Color = [0.0, 0.0, 0.1, 1.0];
+
+const ONE_COLOR: Color = [0.0, 0.0, 1.0, 1.0];
+const TWO_COLOR: Color = [0.0, 1.0, 0.0, 1.0];
+const THREE_COLOR: Color = [1.0, 0.0, 0.0, 1.0];
+const FOUR_COLOR: Color = [0.875, 0.6875, 1.0, 1.0];
+const FIVE_COLOR: Color = [0.64, 0.16, 0.16, 1.0];
+const SIX_COLOR: Color = [0.5, 1.0, 0.5, 1.0];
+const SEVEN_COLOR: Color = [0.9, 0.8, 1.0, 1.0];
+const EIGTH_COLOR: Color = [1.0, 0.6, 0.6, 1.0];
 
 impl Gameboard {
     /// Creates a new game board.
@@ -96,6 +109,7 @@ impl Gameboard {
         Self {
             size,
             bombs,
+            flagged: 0,
             state: GameState::Initial,
             cells: vec![vec![Cell::default(); size[1]]; size[0]],
         }
@@ -192,6 +206,7 @@ impl Gameboard {
             // Actually, we can just look at player views, if we only have
             // Revealed and exactly `bombs` Flagged, the player wins.
             let mut flagged = 0;
+            let mut over = true;
             for y in 0..self.size[1] {
                 for x in 0..self.size[0] {
                     match self.get_cell(x, y).player {
@@ -199,20 +214,23 @@ impl Gameboard {
                             flagged += 1;
                             if flagged > self.bombs {
                                 // Too many flags, not won!
-                                return;
+                                over = false;
                             }
                         },
                         PlayerCell::Revealed => {},
                         // If some are not Revealed nor Flagged, then the game
                         // is not over.
-                        _ => return,
+                        _ => over = false,
                     }
                 }
             }
 
-            // If we arrive here, it means the player won!
-            self.state = GameState::Won;
-            println!("Hoora, you won!");
+            self.flagged = flagged;
+            if over && self.flagged == self.bombs {
+                // If we arrive here, it means the player won!
+                self.state = GameState::Won;
+                println!("Hoora, you won!");
+            }
         }
 
     }
@@ -281,38 +299,38 @@ impl Gameboard {
         }
     }
 
-    /// Gets the character and background color at cell location.
+    /// Gets the character with its own font and background color at cell location.
     /// TODO: pictures.
-    pub fn char_and_color(&self, ind: [usize; 2]) -> (Option<char>, Color) {
+    pub fn char_and_colors(&self, ind: [usize; 2]) -> (Option<(char, Color)>, Color) {
         let cell = self.get_cell(ind[0], ind[1]);
         match self.state {
             GameState::Lost => {
                 // If we lost, reveal the bomb positions.
                 match cell.content {
                     CellContent::Nothing(_) => return (None, ND_BACKGROUND),
-                    CellContent::Bomb => (Some('B'), BOMB_BACKGROUND),
+                    CellContent::Bomb => (Some(('B', BLACK)), BOMB_BACKGROUND),
                 }
             },
             _ => {
                 // In other states, show the player input.
                 match cell.player {
                     PlayerCell::NotDetermined => (None, ND_BACKGROUND),
-                    PlayerCell::Flagged => (Some('F'), ND_BACKGROUND),
-                    PlayerCell::Question => (Some('?'), ND_BACKGROUND),
+                    PlayerCell::Flagged => (Some(('F', BLACK)), FLAGGED_BACKGROUND),
+                    PlayerCell::Question => (Some(('?', BLACK)), ND_BACKGROUND),
                     PlayerCell::Revealed => {
                         // If we reveal the input, we should only have nothing
                         // in the cell.
                         match cell.content {
                             CellContent::Nothing(v) => match v {
-                                0 => (Some('0'), REV_BACKGROUND),
-                                1 => (Some('1'), REV_BACKGROUND),
-                                2 => (Some('2'), REV_BACKGROUND),
-                                3 => (Some('3'), REV_BACKGROUND),
-                                4 => (Some('4'), REV_BACKGROUND),
-                                5 => (Some('5'), REV_BACKGROUND),
-                                6 => (Some('6'), REV_BACKGROUND),
-                                7 => (Some('7'), REV_BACKGROUND),
-                                8 => (Some('8'), REV_BACKGROUND),
+                                0 => (None, REV_BACKGROUND),
+                                1 => (Some(('1', ONE_COLOR)), REV_BACKGROUND),
+                                2 => (Some(('2', TWO_COLOR)), REV_BACKGROUND),
+                                3 => (Some(('3', THREE_COLOR)), REV_BACKGROUND),
+                                4 => (Some(('4', FOUR_COLOR)), REV_BACKGROUND),
+                                5 => (Some(('5', FIVE_COLOR)), REV_BACKGROUND),
+                                6 => (Some(('6', SIX_COLOR)), REV_BACKGROUND),
+                                7 => (Some(('7', SEVEN_COLOR)), REV_BACKGROUND),
+                                8 => (Some(('8', EIGTH_COLOR)), REV_BACKGROUND),
                                 // Not possible to have more than 8
                                 _ => panic!("more than 8 bombs???"),
                             },
