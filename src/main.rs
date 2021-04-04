@@ -39,7 +39,7 @@ fn main() {
     }
 }
 
-pub use crate::gameboard::Gameboard;
+pub use crate::gameboard::{Gameboard, GameState};
 pub use crate::gameboard_controller::GameboardController;
 pub use crate::gameboard_view::{GameboardView, GameboardViewSettings};
 

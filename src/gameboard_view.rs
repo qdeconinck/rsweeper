@@ -102,7 +102,11 @@ impl GameboardView {
         ];
 
         // Draw bomb counters.
-        let str = format!("Left: {}", gameboard.bombs - gameboard.flagged);
+        let str = match gameboard.state {
+            crate::GameState::Lost => format!("BOOM!"),
+            crate::GameState::Won => format!("You won!"),
+            _ => format!("Left: {}", gameboard.bombs - gameboard.flagged),
+        };
 
         let _ = text.draw(&str, glyphs, &c.draw_state, c.transform.trans(bombs_counter_rect[0], bombs_counter_rect[1]), g);
         // Draw board background.
