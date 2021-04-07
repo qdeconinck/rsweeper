@@ -70,7 +70,7 @@ pub enum GameState {
     /// game is won.
     Won,
     /// The player revealed a bomb, the game is over.
-    Lost, 
+    Lost,
 }
 
 /// Stores game board information.
@@ -127,7 +127,6 @@ impl Gameboard {
                 }
             }
         }
-        println!("res is {}", res);
         res
     }
 
@@ -277,6 +276,14 @@ impl Gameboard {
 
         // We can only set something if we are in the Alive state.
         if let GameState::Alive = self.state {
+            // If we try to place a flag while we are at the right number of
+            // bombs, do nothing.
+            if let PlayerCell::Flagged = val {
+                if self.flagged >= self.bombs {
+                    return;
+                }
+            }
+
             let cell = self.get_mut_cell(ind[0], ind[1]);
             // If the cell is Revealed, nothing to do.
             if let PlayerCell::Revealed = cell.player {

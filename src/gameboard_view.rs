@@ -115,6 +115,8 @@ impl GameboardView {
 
         // Declare the format for cell and section lines.
         let cell_edge = Line::new(settings.cell_edge_color, settings.cell_edge_radius);
+        let flag_pole = Line::new([0.65, 0.16, 0.16, 1.00], 2.0);
+        let flag = Line::new([1.00, 0.00, 0.00, 1.00], 1.0);
 
         let x_size = gameboard_size[0] / (gameboard.size[0] as f64);
         let y_size = gameboard_size[1] / (gameboard.size[1] as f64);
@@ -150,18 +152,36 @@ impl GameboardView {
                         y,
                     ];
                     if let Ok(character) = glyphs.character(26, ch) {
-                        let ch_x = pos[0] + (settings.cell_size[0] - character.atlas_size[0]) / 2.0;
-                        let ch_y = pos[1] + (settings.cell_size[1] - character.atlas_size[1]) / 2.0;
-                        let text_image = text_image.src_rect([
-                            character.atlas_offset[0],
-                            character.atlas_offset[1],
-                            character.atlas_size[0],
-                            character.atlas_size[1],
-                        ]);
-                        text_image.draw(character.texture,
-                                        &c.draw_state,
-                                        c.transform.trans(ch_x, ch_y),
-                                        g);
+                        match ch {
+                            'F' => {
+                                // Draw a nice flag.
+                                let f_x = pos[0] + 6.0;
+                                let f_y = pos[1] + 2.0;
+                                let pole_pos = [f_x, f_y, f_x, f_y + settings.cell_size[1] - 4.0];
+                                flag_pole.draw(pole_pos, &c.draw_state, c.transform, g);
+                                // The flag itself.
+                                let base_y = f_y + settings.cell_size[1] / 3.0;
+                                let max_i = 2 * ((settings.cell_size[1] / 3.0) as i64) - 3;
+                                for i in (1..max_i).rev() {
+                                    let flag_line = [f_x + 2.0 + ((max_i - i) as f64), base_y + (i as f64) / 2.0, f_x + 2.0 + ((max_i - i) as f64), base_y - (i as f64) / 2.0];
+                                    flag.draw(flag_line, &c.draw_state, c.transform, g);
+                                }
+                            },
+                            _ => {
+                                let ch_x = pos[0] + (settings.cell_size[0] - character.atlas_size[0]) / 2.0;
+                                let ch_y = pos[1] + (settings.cell_size[1] - character.atlas_size[1]) / 2.0;
+                                let text_image = text_image.src_rect([
+                                    character.atlas_offset[0],
+                                    character.atlas_offset[1],
+                                    character.atlas_size[0],
+                                    character.atlas_size[1],
+                                ]);
+                                text_image.draw(character.texture,
+                                                &c.draw_state,
+                                                c.transform.trans(ch_x, ch_y),
+                                                g);
+                                    }
+                        }
                     }
                 }
             }
