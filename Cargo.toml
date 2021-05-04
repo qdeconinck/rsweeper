@@ -14,4 +14,11 @@ piston = "*"
 piston2d-graphics = "0.39.0"
 piston2d-opengl_graphics = "0.77.0"
 pistoncore-glutin_window = "0.68.2"
+glium = "0.28"
+conrod_core = { path = "../conrod/conrod_core"}
+conrod_glium = { path = "../conrod/backends/conrod_glium"}
+conrod_winit = { path = "../conrod/backends/conrod_winit"}
 rand = "*"
+find_folder = "0.3.0"
+winit = "0.23"
+image = "0.22"

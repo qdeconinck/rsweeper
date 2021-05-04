@@ -75,7 +75,7 @@ pub enum GameState {
 
 /// Stores game board information.
 pub struct Gameboard {
-    /// The size of the gameboard.
+    /// The size of the gameboard (cols, rows).
     pub size: [usize; 2],
     /// The number of bombs in the game.
     pub bombs: usize,
@@ -88,15 +88,17 @@ pub struct Gameboard {
 }
 
 const BOMB_BACKGROUND: Color = [0.9, 0.0, 0.0, 1.0];
+const WRONG_BACKGROUND: Color = [0.5, 0.0, 0.5, 1.0];
 const ND_BACKGROUND: Color = [1.0, 1.0, 1.0, 1.0];
 const REV_BACKGROUND: Color = [0.7, 0.7, 0.7, 1.0];
+const QUESTION_BACKGROUND: Color = [0.7, 0.7, 1.0, 1.0];
 const FLAGGED_BACKGROUND: Color = [1.0, 0.64, 0.0, 1.0];
 const BLACK: Color = [0.0, 0.0, 0.1, 1.0];
 
 const ONE_COLOR: Color = [0.0, 0.0, 1.0, 1.0];
 const TWO_COLOR: Color = [0.0, 1.0, 0.0, 1.0];
 const THREE_COLOR: Color = [1.0, 0.0, 0.0, 1.0];
-const FOUR_COLOR: Color = [0.875, 0.6875, 1.0, 1.0];
+const FOUR_COLOR: Color = [0.675, 0.4875, 0.8, 1.0];
 const FIVE_COLOR: Color = [0.64, 0.16, 0.16, 1.0];
 const SIX_COLOR: Color = [0.5, 1.0, 0.5, 1.0];
 const SEVEN_COLOR: Color = [0.9, 0.8, 1.0, 1.0];
@@ -104,21 +106,21 @@ const EIGTH_COLOR: Color = [1.0, 0.6, 0.6, 1.0];
 
 impl Gameboard {
     /// Creates a new game board.
-    pub fn new(size: [usize; 2], bombs: usize) -> Self {
-        assert!(size[0] * size[1] > bombs, "Too many bombs to be placed");
+    pub fn new(cols: usize, rows: usize, bombs: usize) -> Self {
+        assert!(rows * cols > bombs, "Too many bombs to be placed");
         Self {
-            size,
+            size: [cols, rows],
             bombs,
             flagged: 0,
             state: GameState::Initial,
-            cells: vec![vec![Cell::default(); size[1]]; size[0]],
+            cells: vec![vec![Cell::default(); cols]; rows],
         }
     }
 
-    fn count_neighbor_bombs(&self, x: usize, y: usize) -> u8 {
+    fn count_neighbor_bombs(&self, col: usize, raw: usize) -> u8 {
         let mut res = 0;
-        for ny in y.saturating_sub(1)..=min(y + 1, self.size[1] - 1) {
-            for nx in x.saturating_sub(1)..=min(x + 1, self.size[0] - 1) {
+        for ny in raw.saturating_sub(1)..=min(raw + 1, self.size[1] - 1) {
+            for nx in col.saturating_sub(1)..=min(col + 1, self.size[0] - 1) {
                 // We do not handle ourselve, but if we are a bomb this has
                 // no much sense.
                 match self.get_cell(nx, ny).content {
@@ -131,13 +133,13 @@ impl Gameboard {
     }
 
     /// Gets a immutable reference to a Cell.
-    pub fn get_cell(&self, x: usize, y: usize) -> &Cell {
-        & self.cells[y][x]
+    pub fn get_cell(&self, col: usize, row: usize) -> &Cell {
+        & self.cells[row][col]
     }
 
     /// Gets a mutable reference to a Cell.
-    pub fn get_mut_cell(&mut self, x: usize, y: usize) -> &mut Cell {
-        &mut self.cells[y][x]
+    pub fn get_mut_cell(&mut self, col: usize, row: usize) -> &mut Cell {
+        &mut self.cells[row][col]
     }
 
     /// Initialize the cells.
@@ -147,9 +149,9 @@ impl Gameboard {
         let mut rng = rand::thread_rng();
         let mut placed = 0;
         while placed < self.bombs {
-            let x = rng.gen_range(0..self.size[0]);
-            let y = rng.gen_range(0..self.size[1]);
-            let cell = self.get_mut_cell(x, y);
+            let col = rng.gen_range(0..self.size[0]);
+            let row = rng.gen_range(0..self.size[1]);
+            let cell = self.get_mut_cell(col, row);
             // Place a bomb only if
             // 1) the cell was not revealed by the player
             // 2) no previous bomb was there
@@ -163,16 +165,16 @@ impl Gameboard {
                 }
             }
         }
-        println!("Bomb placed");
+        println!("Bombs placed");
 
         // And now compute the neighbors.
-        for y in 0..self.size[1] {
-            for x in 0..self.size[0] {
-                let cell = self.get_cell(x, y);
+        for row in 0..self.size[1] {
+            for col in 0..self.size[0] {
+                let cell = self.get_cell(col, row);
                 match cell.content {
                     CellContent::Nothing(_) => {
-                        let new_val = self.count_neighbor_bombs(x, y);
-                        let cell = self.get_mut_cell(x, y);
+                        let new_val = self.count_neighbor_bombs(col, row);
+                        let cell = self.get_mut_cell(col, row);
                         cell.content = CellContent::Nothing(new_val);
                     },
                     CellContent::Bomb => {},
@@ -186,10 +188,10 @@ impl Gameboard {
     }
 
     /// Update the state of the gameboard.
-    fn update_state(&mut self, ind: [usize; 2]) {
+    fn update_state(&mut self, col: usize, row: usize) {
         // The state is only updatable when being alive.
         if let GameState::Alive = self.state {
-            let cell = self.get_cell(ind[0], ind[1]);
+            let cell = self.get_cell(col, row);
 
             // Did the player lost?
             if let PlayerCell::Revealed = cell.player {
@@ -206,9 +208,9 @@ impl Gameboard {
             // Revealed and exactly `bombs` Flagged, the player wins.
             let mut flagged = 0;
             let mut over = true;
-            for y in 0..self.size[1] {
-                for x in 0..self.size[0] {
-                    match self.get_cell(x, y).player {
+            for nrow in 0..self.size[1] {
+                for ncol in 0..self.size[0] {
+                    match self.get_cell(ncol, nrow).player {
                         PlayerCell::Flagged => {
                             flagged += 1;
                             if flagged > self.bombs {
@@ -234,17 +236,17 @@ impl Gameboard {
 
     }
 
-    fn reveal_with_no_neighbors(&mut self, x: usize, y: usize) {
-        for ny in y.saturating_sub(1)..=min(y + 1, self.size[1] - 1) {
-            for nx in x.saturating_sub(1)..=min(x + 1, self.size[0] - 1) {
+    fn reveal_with_no_neighbors(&mut self, col: usize, row: usize) {
+        for nrow in row.saturating_sub(1)..=min(row + 1, self.size[1] - 1) {
+            for ncol in col.saturating_sub(1)..=min(col + 1, self.size[0] - 1) {
                 // Only handle cells that are not revealed, otherwise we will
                 // loop forever.
-                if let PlayerCell::Revealed = self.get_cell(nx, ny).player {
+                if let PlayerCell::Revealed = self.get_cell(ncol, nrow).player {
                     continue;
                 }
-                self.get_mut_cell(nx, ny).player = PlayerCell::Revealed;
-                match self.get_cell(nx, ny).content {
-                    CellContent::Nothing(0) => self.reveal_with_no_neighbors(nx, ny),
+                self.get_mut_cell(ncol, nrow).player = PlayerCell::Revealed;
+                match self.get_cell(ncol, nrow).content {
+                    CellContent::Nothing(0) => self.reveal_with_no_neighbors(ncol, nrow),
                     _ => {},
                 }
             }
@@ -252,7 +254,7 @@ impl Gameboard {
     }
 
     /// Sets the player input.
-    pub fn set(&mut self, ind: [usize; 2], val: PlayerCell) {
+    pub fn set(&mut self, col: usize, row: usize, val: PlayerCell) {
         if let GameState::Initial = self.state {
             // If the game is in Initial state and the value is not a Revealed
             // one, do nothing.
@@ -260,12 +262,12 @@ impl Gameboard {
                 PlayerCell::Revealed => {
                     // Record that we revealed a cell, and then determine the
                     // bomb positions.
-                    let cell = self.get_mut_cell(ind[0], ind[1]);
+                    let cell = self.get_mut_cell(col, row);
                     cell.player = PlayerCell::Revealed;
                     self.init();
                     // Only perform the optimization if the player has some luck.
-                    match self.get_cell(ind[0], ind[1]).content {
-                        CellContent::Nothing(0) => self.reveal_with_no_neighbors(ind[0], ind[1]),
+                    match self.get_cell(col, row).content {
+                        CellContent::Nothing(0) => self.reveal_with_no_neighbors(col, row),
                         _ => {},
                     }
                 }
@@ -284,7 +286,7 @@ impl Gameboard {
                 }
             }
 
-            let cell = self.get_mut_cell(ind[0], ind[1]);
+            let cell = self.get_mut_cell(col, row);
             // If the cell is Revealed, nothing to do.
             if let PlayerCell::Revealed = cell.player {
                 return;
@@ -296,26 +298,56 @@ impl Gameboard {
             // Add the optimization to reduce the number of clicks.
             if let PlayerCell::Revealed = val {
                 match cell.content {
-                    CellContent::Nothing(0) => self.reveal_with_no_neighbors(ind[0], ind[1]),
+                    CellContent::Nothing(0) => self.reveal_with_no_neighbors(col, row),
                     _ => {},
                 }
             }
 
             // Finally, check the game status looking at the last cell touched.
-            self.update_state(ind);
+            self.update_state(col, row);
+        }
+    }
+
+    fn get_neighbours(&self, col: usize, row: usize) -> (Option<(char, Color)>, Color) {
+        // If we reveal the input, we should only have nothing
+        // in the cell.
+        let cell = self.get_cell(col, row);
+        match cell.content {
+            CellContent::Nothing(v) => match v {
+                0 => (None, REV_BACKGROUND),
+                1 => (Some(('1', ONE_COLOR)), REV_BACKGROUND),
+                2 => (Some(('2', TWO_COLOR)), REV_BACKGROUND),
+                3 => (Some(('3', THREE_COLOR)), REV_BACKGROUND),
+                4 => (Some(('4', FOUR_COLOR)), REV_BACKGROUND),
+                5 => (Some(('5', FIVE_COLOR)), REV_BACKGROUND),
+                6 => (Some(('6', SIX_COLOR)), REV_BACKGROUND),
+                7 => (Some(('7', SEVEN_COLOR)), REV_BACKGROUND),
+                8 => (Some(('8', EIGTH_COLOR)), REV_BACKGROUND),
+                // Not possible to have more than 8
+                _ => panic!("more than 8 bombs???"),
+            },
+            _ => (None, REV_BACKGROUND),
         }
     }
 
     /// Gets the character with its own font and background color at cell location.
     /// TODO: pictures.
-    pub fn char_and_colors(&self, ind: [usize; 2]) -> (Option<(char, Color)>, Color) {
-        let cell = self.get_cell(ind[0], ind[1]);
+    pub fn char_and_colors(&self, col: usize, row: usize) -> (Option<(char, Color)>, Color) {
+        let cell = self.get_cell(col, row);
         match self.state {
             GameState::Lost => {
                 // If we lost, reveal the bomb positions.
                 match cell.content {
-                    CellContent::Nothing(_) => return (None, ND_BACKGROUND),
-                    CellContent::Bomb => (Some(('B', BLACK)), BOMB_BACKGROUND),
+                    CellContent::Nothing(_) => match cell.player {
+                        PlayerCell::Revealed => self.get_neighbours(col, row),
+                        PlayerCell::Flagged => (Some(('X', BLACK)), WRONG_BACKGROUND),
+                        _ => (None, ND_BACKGROUND),
+                    },
+                    CellContent::Bomb => match cell.player {
+                        PlayerCell::Revealed => (Some(('B', BLACK)), WRONG_BACKGROUND),
+                        PlayerCell::Flagged => (Some(('F', BLACK)), FLAGGED_BACKGROUND),
+                        _ => (Some(('B', BLACK)), BOMB_BACKGROUND),
+                    }
                 }
             },
             _ => {
@@ -323,26 +355,9 @@ impl Gameboard {
                 match cell.player {
                     PlayerCell::NotDetermined => (None, ND_BACKGROUND),
                     PlayerCell::Flagged => (Some(('F', BLACK)), FLAGGED_BACKGROUND),
-                    PlayerCell::Question => (Some(('?', BLACK)), ND_BACKGROUND),
+                    PlayerCell::Question => (Some(('?', BLACK)), QUESTION_BACKGROUND),
                     PlayerCell::Revealed => {
-                        // If we reveal the input, we should only have nothing
-                        // in the cell.
-                        match cell.content {
-                            CellContent::Nothing(v) => match v {
-                                0 => (None, REV_BACKGROUND),
-                                1 => (Some(('1', ONE_COLOR)), REV_BACKGROUND),
-                                2 => (Some(('2', TWO_COLOR)), REV_BACKGROUND),
-                                3 => (Some(('3', THREE_COLOR)), REV_BACKGROUND),
-                                4 => (Some(('4', FOUR_COLOR)), REV_BACKGROUND),
-                                5 => (Some(('5', FIVE_COLOR)), REV_BACKGROUND),
-                                6 => (Some(('6', SIX_COLOR)), REV_BACKGROUND),
-                                7 => (Some(('7', SEVEN_COLOR)), REV_BACKGROUND),
-                                8 => (Some(('8', EIGTH_COLOR)), REV_BACKGROUND),
-                                // Not possible to have more than 8
-                                _ => panic!("more than 8 bombs???"),
-                            },
-                            _ => (None, REV_BACKGROUND),
-                        }
+                        self.get_neighbours(col, row)
                     }
                 }
             }

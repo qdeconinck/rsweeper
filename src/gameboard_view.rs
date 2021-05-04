@@ -122,7 +122,7 @@ impl GameboardView {
         let y_size = gameboard_size[1] / (gameboard.size[1] as f64);
         for cell_y in 0..gameboard.size[1] {
             for cell_x in 0..gameboard.size[0] {
-                let (ch, bg_color) = gameboard.char_and_colors([cell_x, cell_y]);
+                let (ch, bg_color) = gameboard.char_and_colors(cell_x, cell_y);
 
                 let x = settings.gameboard_position[0] + (cell_x as f64) * x_size;
                 let y = settings.gameboard_position[1] + (cell_y as f64) * y_size;
