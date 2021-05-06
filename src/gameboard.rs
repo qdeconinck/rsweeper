@@ -142,8 +142,16 @@ impl Gameboard {
         &mut self.cells[row][col]
     }
 
-    /// Initialize the cells.
-    fn init(&mut self) {
+    /// Returns true if the coordinates of 1 are a direct neighbour of 2 (also if 1 is 2).
+    fn is_neighbour(&self, col1: usize, row1: usize, col2: usize, row2: usize) -> bool {
+        col1.saturating_sub(1) <= col2
+            && col2 <= col1 + 1
+            && row1.saturating_sub(1) <= row2
+            && row2 <= row1 + 1
+    }
+
+    /// Initialize the cells, with the player initial revealed cell.
+    fn init(&mut self, rcol: usize, rrow: usize) {
         println!("Starting init");
         // This is very unefficient to do so, but anyway.
         let mut rng = rand::thread_rng();
@@ -151,17 +159,15 @@ impl Gameboard {
         while placed < self.bombs {
             let col = rng.gen_range(0..self.size[0]);
             let row = rng.gen_range(0..self.size[1]);
-            let cell = self.get_mut_cell(col, row);
             // Place a bomb only if
             // 1) the cell was not revealed by the player
-            // 2) no previous bomb was there
-            if let CellContent::Nothing(_) = cell.content {
-                match cell.player {
-                    PlayerCell::Revealed => {},
-                    _ => {
-                        cell.content = CellContent::Bomb;
-                        placed += 1;
-                    }
+            // 2) the cell is not a neighbour of the one revealed by the player
+            // 3) no previous bomb was there
+            if !self.is_neighbour(rcol, rrow, col, row) {
+                let cell = self.get_mut_cell(col, row);
+                if let CellContent::Nothing(_) = cell.content {
+                    cell.content = CellContent::Bomb;
+                    placed += 1;
                 }
             }
         }
@@ -264,7 +270,7 @@ impl Gameboard {
                     // bomb positions.
                     let cell = self.get_mut_cell(col, row);
                     cell.player = PlayerCell::Revealed;
-                    self.init();
+                    self.init(col, row);
                     // Only perform the optimization if the player has some luck.
                     match self.get_cell(col, row).content {
                         CellContent::Nothing(0) => self.reveal_with_no_neighbors(col, row),
