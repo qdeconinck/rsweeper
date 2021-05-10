@@ -18,6 +18,8 @@ widget_ids! {
 
         grid,
 
+        restart,
+
         counter,
         cell[],
         cell_label[],
@@ -63,6 +65,14 @@ fn set_widgets(ref mut ui: conrod_core::UiCell, ids: &mut Ids, img_ids: &mut Ima
     };
 
     widget::Text::new(&str).middle_of(ids.header).font_size(36).set(ids.counter, ui);
+
+    // TODO: replace with a nice image.
+    for _ in widget::Button::new().color(color::BLACK).mid_left_of(ids.footer).w(50.0).h_of(ids.footer).set(ids.restart, ui) {
+        // TODO take new values.
+        let size = gc.gameboard.size;
+        let bombs = gc.gameboard.bombs;
+        gc.reset(size[0], size[1], bombs);
+    }
 
     let grid_wh = ui.wh_of(ids.body).unwrap();
     let grid_size = gc.gameboard.size;

@@ -32,6 +32,12 @@ impl GameboardController {
         }
     }
 
+    /// Reset the gameboard with the provided number of columns, rows
+    /// and bombs.
+    pub fn reset(&mut self, cols: usize, rows: usize,bombs: usize) {
+        self.gameboard = Gameboard::new(cols, rows, bombs);
+    }
+
     /// Handles events.
     pub fn event(&mut self, col: usize, row: usize, e: &conrod_core::widget::button::ClickEvent) {
         match e {
